@@ -1,0 +1,38 @@
+name: Build and Test iOS App
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7'  # Adjust if your project uses a different Ruby version
+
+      - name: Install dependencies
+        run: |
+          brew install fastlane
+          bundle install  # Ensure your project has a Gemfile and Bundler
+
+      - name: Build and Test
+        run: |
+          xcodebuild -project Sport Relay Counter.xcodeproj -scheme Release -sdk iphoneos -configuration Release clean build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-build
+          path: |
+            build/Release-iphoneos/SportRelayCounter.ipa  # Adjust this path to your actual build output
