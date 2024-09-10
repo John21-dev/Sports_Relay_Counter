@@ -17,74 +17,93 @@ struct ContentView: View {
     @State private var name: String = ""
     @State private var savedData: [(String, [Int])] = []
     @State private var isShowingAlert = false
-
+    @State private var isWhiteBackground = true // Track the background color
+    
     var totalSum: Int {
         return button1Count + button2Count + button3Count + button4Count
     }
 
+    // Define softer colors
+    let softRed = Color(red: 1.0, green: 0.4, blue: 0.4)
+    let softBlue = Color(red: 0.4, green: 0.7, blue: 1.0)
+    let softGreen = Color(red: 0.4, green: 1.0, blue: 0.4)
+    
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Sports Relay Counter")
-                .font(.system(size: 30, weight: .bold))
-                .foregroundColor(.blue)
+        ZStack {
+            (isWhiteBackground ? Color.white : Color.black)
+                .edgesIgnoringSafeArea(.all)
             
-            TextField("Enter Name", text: $name)
-                .font(.system(size: 30))
-                .textFieldStyle(RoundedBorderTextFieldStyle())
+            VStack(spacing: 10) {
+                Text("Sports Relay Counter")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(isWhiteBackground ? .black : .white)
+                
+                TextField("Enter names", text: $name)
+                    .font(.system(size: 26))
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                VStack(spacing: 15) {
+                    HStack(spacing: 15) {
+                        CircleButton(count: $button1Count, color: .blue)
+                        CircleButton(count: $button2Count, color: .green)
+                    }
+                    HStack(spacing: 15) {
+                        CircleButton(count: $button3Count, color: .yellow)
+                        CircleButton(count: $button4Count, color: .red)
+                    }
+                }
+                
+                Text("Total: \(totalSum)")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(isWhiteBackground ? .black : .white)
+                    .padding()
+                
+                HStack(spacing: 20) {
+                    Button(action: {
+                        self.resetCounts()
+                    }) {
+                        Text("Reset")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding()
+                            .background(RoundedRectangle(cornerRadius: 10).foregroundColor(softRed))
+                    }
+                    
+                    Button(action: {
+                        self.saveCounts()
+                    }) {
+                        Text("Save")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding()
+                            .background(RoundedRectangle(cornerRadius: 10).foregroundColor(softBlue))
+                    }
+                }
+                
+                // Toggle Switch for Light/Dark Mode
+                Toggle(isOn: $isWhiteBackground) {
+                    HStack {
+                        Image(systemName: isWhiteBackground ? "sun.max.fill" : "moon.fill")
+                            .foregroundColor(isWhiteBackground ? .yellow : .gray)
+                        Text(isWhiteBackground ? "Light Mode" : "Dark Mode")
+                            .foregroundColor(isWhiteBackground ? .black : .white)
+                    }
+                }
                 .padding()
-
-            VStack(spacing: 0) {
-                HStack(spacing: 0) {
-                    CircleButton(count: $button1Count, color: .blue)
-                    CircleButton(count: $button2Count, color: .green)
-                }
-                HStack(spacing: 0) {
-                    CircleButton(count: $button3Count, color: .orange)
-                    CircleButton(count: $button4Count, color: .red)
-                }
+                .toggleStyle(SwitchToggleStyle(tint: .gray)) // Customize the toggle color
             }
-
-            Text("Total: \(totalSum)")
-                .font(.system(size: 48, weight: .bold))
-                .foregroundColor(.black)
-                .padding()
-
-            HStack(spacing: 20) {
-                Button(action: {
-                    self.resetCounts()
-                }) {
-                    Text("Reset")
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(RoundedRectangle(cornerRadius: 10).foregroundColor(.gray))
-                }
-
-                Button(action: {
-                    self.saveCounts()
-                }) {
-                    Text("Save")
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(RoundedRectangle(cornerRadius: 10).foregroundColor(.blue))
-                }
-
-                Button(action: {
-                    self.exportToCSV()
-                }) {
-                    Text("Export to CSV")
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(RoundedRectangle(cornerRadius: 10).foregroundColor(.green))
-                }
+            .padding()
+            .alert(isPresented: $isShowingAlert) {
+                Alert(
+                    title: Text("Data Saved"),
+                    message: Text(savedDataDescription()),
+                    primaryButton: .destructive(Text("Clear Data"), action: {
+                        clearSavedData() // Function to clear the saved data
+                    }),
+                    secondaryButton: .default(Text("OK"))
+                )
             }
-        }
-        .padding() // Add padding to the VStack to space out the rows
-        .alert(isPresented: $isShowingAlert) {
-            Alert(
-                title: Text("Data Saved"),
-                message: Text(savedDataDescription()),
-                dismissButton: .default(Text("OK"))
-            )
         }
     }
 
@@ -96,6 +115,11 @@ struct ContentView: View {
             description += "\(name): \(countsString) = \(total)\n"
         }
         return description
+    }
+    
+    func clearSavedData() {
+        savedData.removeAll()
+        print("Saved data has been cleared")
     }
 
     func resetCounts() {
@@ -112,21 +136,6 @@ struct ContentView: View {
         savedData.append((name, counts))
         resetCounts()
         isShowingAlert = true
-    }
-    
-    func exportToCSV() {
-        let data = savedData.map { [$0.0] + $0.1.map { String($0) } }
-        let csvData = data.map { $0.joined(separator: ",") }.joined(separator: "\n")
-        
-        do {
-            let fileName = "counter_data.csv"
-            let fileURL = try FileManager.default.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-                .appendingPathComponent(fileName)
-            try csvData.write(to: fileURL, atomically: true, encoding: .utf8)
-            print("CSV file exported: \(fileURL)")
-        } catch {
-            print("Error exporting CSV: \(error)")
-        }
     }
 }
 
